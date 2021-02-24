@@ -12,8 +12,9 @@
 #define GPIO0_PIN 3
 #define GPIO2_PIN 5
 
-// We assume that all GPIOs are LOW
-boolean gpioState[] = { false, false };
+// TODO: init GPIO to low
+// We assume that GPIO is low
+boolean gpioState = false;
 
 // The MQTT server used
 char clientID[] = "2574d403-ac0b-4f10-a71f-6fef74d6ecb5";
@@ -117,43 +118,46 @@ void parseJSON(const char* json) {
   // Most of the time, you can rely on the implicit casts.
   // In other case, you can do doc["time"].as<long>();
   const char* methodName = doc["method"];
-  const char* responseTopic = doc["responseTopic"];
   Serial.print("method: ");
   Serial.println(String(methodName));
-  Serial.print("responseTopic: ");
-  Serial.println(String(responseTopic));
 
-  if (strcmp(methodName, "getGPIOStatus") ==0) {
+  if (strcmp(methodName, "getGPIOStatus") == 0) {
+    const char* responseTopic = doc["responseTopic"];
     Serial.print("Command is getGPIOStatus...");
+
+    Serial.print("responseTopic: ");
+    Serial.println(String(responseTopic));
     
     StaticJsonDocument<200> doc;
 
-    doc["sensor"] = "gps";
-    doc["time"] = 1351824120;
+    doc["gpio"] = 2;
+    doc["status"] = gpioState;
   
     // Generate the minified JSON.
     //
     char payload[256];
     serializeJson(doc, payload);
     client.publish(responseTopic, payload);
+  } else if (strcmp(methodName, "setGPIOStatus") == 0) {
+    Serial.print("Command is setGPIOStatus...");
+
+    int gpio = doc["gpio"];
+    boolean status = doc["status"];
+
+    Serial.print("gpio: ");
+    Serial.println(gpio);
+    Serial.print("status: ");
+    Serial.println(status);
+
+    gpioState = status;
   }
 }
 
-
-
 // The callback for when a PUBLISH message is received from the server.
 void on_message(const char* topic, byte* payload, unsigned int length) {
-
-  Serial.println("On message");
-
   char json[length + 1];
   strncpy (json, (char*)payload, length);
   json[length] = '\0';
-
-//  Serial.print("Topic: ");
-//  Serial.println(topic);
-//  Serial.print("Message: ");
-//  Serial.println(String(json));
   
   parseJSON(json);
 }
@@ -174,22 +178,22 @@ void on_message(const char* topic, byte* payload, unsigned int length) {
 //  client.publish(topic);
 //}
 
-void set_gpio_status(int pin, boolean enabled) {
-  if (pin == GPIO0_PIN) {
-    // Output GPIOs state
-    digitalWrite(GPIO0, enabled ? HIGH : LOW);
-    // Update GPIOs state
-    gpioState[0] = enabled;
-  } else if (pin == GPIO2_PIN) {
-    // Output GPIOs state
-    digitalWrite(GPIO2, enabled ? HIGH : LOW);
-    // Update GPIOs state
-    gpioState[1] = enabled;
-  }
-}
+//void set_gpio_status(int pin, boolean enabled) {
+//  if (pin == GPIO0_PIN) {
+//    // Output GPIOs state
+//    digitalWrite(GPIO0, enabled ? HIGH : LOW);
+//    // Update GPIOs state
+//    gpioState[0] = enabled;
+//  } else if (pin == GPIO2_PIN) {
+//    // Output GPIOs state
+//    digitalWrite(GPIO2, enabled ? HIGH : LOW);
+//    // Update GPIOs state
+//    gpioState[1] = enabled;
+//  }
+//}
 
 void InitWiFi() {
-  Serial.println("Connecting to AP ...");
+  Serial.println(F("Connecting to AP ..."));
   // attempt to connect to WiFi network
 
   WiFi.begin(WIFI_AP, WIFI_PASSWORD);
@@ -198,7 +202,7 @@ void InitWiFi() {
     Serial.print(".");
   }
   
-  Serial.println("Connected to AP");
+  Serial.println(F("Connected to AP"));
 }
 
 void reconnect() {
@@ -212,26 +216,26 @@ void reconnect() {
         Serial.print(".");
       }
       
-      Serial.println("Connected to AP");
+      Serial.println(F("Connected to AP"));
     }
         
     Serial.print("Connecting to MQTT server ...");
     
     if (client.connect(clientID)) {
-      Serial.println( "[DONE]" );
+      Serial.println(F("[DONE]"));
       
       // Subscribing to receive RPC requests
       client.subscribe(topic);
       
       // Sending current GPIO status
-      Serial.println("Sending current GPIO status ...");
+      Serial.println(F("Sending current GPIO status ..."));
     } else {
-      Serial.print( "[FAILED] [ rc = " );
-      Serial.print( client.state() );
-      Serial.println( " : retrying in 5 seconds]" );
+      Serial.print("[FAILED] [ rc = ");
+      Serial.print(client.state());
+      Serial.println(F(" : retrying in 5 seconds]"));
       
       // Wait 5 seconds before retrying
-      delay( 5000 );
+      delay(5000);
     }
   }
 }
