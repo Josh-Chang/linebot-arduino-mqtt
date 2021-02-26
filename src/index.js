@@ -1,4 +1,5 @@
 const stringify = require('fast-json-stable-stringify');
+const parse = require('fast-json-parse');
 const mqtt = require('mqtt');
 const config = require('../bottender.config');
 const loglevelLogger = require('../logger');
@@ -46,9 +47,20 @@ client.on('connect', function () {
   })
 })
 
+let cxt;
+
 client.on('message', function (topic, message) {
   // message is Buffer
   logger.info(`topic: "${topic}", message:"${message}" got.`);
+  
+  if (topic === responseTopic) {
+    if (cxt) {
+      const { status } = JSON.parse(message);
+      const text = status? 'ON' : 'OFF';
+      logger.info('text is', text)
+      //await cxt.sendText(text);
+    }
+  }
 })
 
 const getGPIOStatus = function () {
@@ -69,7 +81,7 @@ const setGPIOStatus = function (args = { gpio: 2, status: true }) {
     ...args,
     method: 'setGPIOStatus',
   };
-
+  
   client.publish(
     ntutApp.mqtt.topics.arduino.to, 
     stringify(obj),
@@ -78,17 +90,18 @@ const setGPIOStatus = function (args = { gpio: 2, status: true }) {
 
 module.exports = async function App(context) {
   logger.debug('App entered...');
+  cxt = context;
   
   if (context.event.isText) {
     const cmd = context.event.message.text.toUpperCase();
-    if (cmd === 'GETGPIO') {
+    if (cmd === '燈泡狀態') {
       getGPIOStatus();
       
       // Wait for GPIO event
-    } else if (cmd === 'SETGPIOHIGH') {
-      setGPIOStatus({ gpio: 2, status: true });
-    } else if (cmd === 'SETGPIOLOW') {
-      setGPIOStatus({ gpio: 2, status: false });
+    } else if (cmd === '要有光') {
+      setGPIOStatus({ gpio: 0, status: true });
+    } else if (cmd === '黑夜來臨') {
+      setGPIOStatus({ gpio: 0, status: false });
     }
   }
   
