@@ -66,7 +66,7 @@ module.exports = {
   },
   ntutApp: {
     logger: {
-      level: 'INFO',
+      level: 'TRACE',
     },
     mqtt: {
       servers: {
@@ -78,6 +78,9 @@ module.exports = {
           from: 'from-esp8266-arduino-1fc5925a',
         },
       }
+    },
+    line: {
+      userId: 'U90c1446b70a5bce9393071f72b9c5cfb',
     },
   },
 };

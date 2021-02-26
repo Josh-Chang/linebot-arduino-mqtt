@@ -1,5 +1,5 @@
+const { Client } = require('@line/bot-sdk');
 const stringify = require('fast-json-stable-stringify');
-const parse = require('fast-json-parse');
 const mqtt = require('mqtt');
 const config = require('../bottender.config');
 const loglevelLogger = require('../logger');
@@ -17,28 +17,26 @@ const mqttServer = ntutApp.mqtt.servers.defaultUrl;
 loglevelLogger.initialize(ntutApp.logger.level);
 const logger = loglevelLogger.getLoggerByPath(__filename);
 
-// Log config variables
-logger.debug('ntutApp.mqtt.servers.defaultUrl =', ntutApp.mqtt.servers.defaultUrl);
-logger.debug('ntutApp.logger.level =', ntutApp.logger.level);
-logger.debug('ntutApp.mqtt.topics.arduino.to =', ntutApp.mqtt.topics.arduino.to);
-logger.debug('ntutApp.mqtt.topics.arduino.from =', ntutApp.mqtt.topics.arduino.from);
-
 // Connect to MQTT server
-const client = mqtt.connect(mqttServer);
+const mqttClient = mqtt.connect(mqttServer);
+const lineClient = new Client({
+  channelAccessToken: process.env.LINE_ACCESS_TOKEN,
+  channelSecret: process.env.LINE_CHANNEL_SECRET,
+});
 
-client.on('connect', function () {
+mqttClient.on('connect', function () {
   logger.info(`MQTT server "${mqttServer}" connected.`);
   
-  client.subscribe('presence', function (err) {
+  mqttClient.subscribe('presence', function (err) {
     if (!err) {
       // An echo from the server
-      client.publish('presence', 'Hello mqtt~');
+      mqttClient.publish('presence', 'Hello mqtt~');
     } else {
       logger.error(`Subscribe to topic "presence" failed!`);
     }
   })
   
-  client.subscribe(responseTopic, function (err) {
+  mqttClient.subscribe(responseTopic, function (err) {
     if (!err) {
       getGPIOStatus();
     } else {
@@ -47,19 +45,14 @@ client.on('connect', function () {
   })
 })
 
-let cxt;
-
-client.on('message', function (topic, message) {
+mqttClient.on('message', async function (topic, message) {
   // message is Buffer
   logger.info(`topic: "${topic}", message:"${message}" got.`);
   
   if (topic === responseTopic) {
-    if (cxt) {
-      const { status } = JSON.parse(message);
-      const text = status? 'ON' : 'OFF';
-      logger.info('text is', text)
-      //await cxt.sendText(text);
-    }
+    const { status } = JSON.parse(message);
+    const text = status? '亮的' : '暗的';
+    pushTextMessage(`燈泡是${text}`);
   }
 })
 
@@ -70,7 +63,7 @@ const getGPIOStatus = function () {
     method: 'getGPIOStatus',
   };
 
-  client.publish(
+  mqttClient.publish(
     ntutApp.mqtt.topics.arduino.to, 
     stringify(obj),
   );
@@ -82,28 +75,44 @@ const setGPIOStatus = function (args = { gpio: 2, status: true }) {
     method: 'setGPIOStatus',
   };
   
-  client.publish(
+  mqttClient.publish(
     ntutApp.mqtt.topics.arduino.to, 
     stringify(obj),
   );
 };
 
+const pushTextMessage = function (text) {
+  // Line max character limit: 1000
+  if (text.length > 1000) {
+    logger.warn('Text length exceeds character limit: 1000');
+    
+    text = text.slice(0, 1000);
+  }
+  
+  try {
+    lineClient.pushMessage(
+      ntutApp.line.userId,
+      {
+        text,
+        type: 'text',
+      },
+    );
+  } catch (e) {
+    logger.error(String(e));
+  }
+};
+
 module.exports = async function App(context) {
   logger.debug('App entered...');
-  cxt = context;
   
   if (context.event.isText) {
     const cmd = context.event.message.text.toUpperCase();
     if (cmd === '燈泡狀態') {
       getGPIOStatus();
-      
-      // Wait for GPIO event
     } else if (cmd === '要有光') {
       setGPIOStatus({ gpio: 0, status: true });
     } else if (cmd === '黑夜來臨') {
       setGPIOStatus({ gpio: 0, status: false });
     }
   }
-  
-  // await context.sendText('Welcome to Bottender');
 };
