@@ -74,13 +74,16 @@ module.exports = {
       },
       topics: {
         arduino: {
-          to: 'to-esp8266-arduino-1fc5925a',
-          from: 'from-esp8266-arduino-1fc5925a',
+          to: 'to-esp8266-arduino-2wk5925b',
+          from: 'from-esp8266-arduino-2wk5925b',
         },
       }
     },
     line: {
       userId: 'U90c1446b70a5bce9393071f72b9c5cfb',
+    },
+    events: {
+      gpioStatusUpdated: 'GPIO_STATUS_UPDATED',
     },
   },
 };

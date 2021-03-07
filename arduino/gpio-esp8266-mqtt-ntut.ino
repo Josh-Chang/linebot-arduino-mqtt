@@ -1,10 +1,15 @@
-                                                                                                                                                                                      #include <ArduinoJson.h>
-//#include <ArduinoJson.h>
+#include <ArduinoJson.h>
 #include <PubSubClient.h>
 #include <ESP8266WiFi.h>
 
-#define WIFI_AP "Josh"
+#define WIFI_AP "Josh.Chang"
 #define WIFI_PASSWORD "2ojaAlra"
+
+//#define WIFI_AP "CPH1707"
+//#define WIFI_PASSWORD "12345678"
+
+//#define WIFI_AP "NTUT-Free"
+//#define WIFI_PASSWORD NULL
 
 #define GPIO0 0
 #define GPIO2 2
@@ -21,7 +26,7 @@ char clientID[] = "2574d403-ac0b-4f10-a71f-6fef74d6ecb5";
 char mqttServer[] = "test.mosquitto.org";
 int port = 1883;
 // char topic[] = "presence";
-char topic[] = "to-esp8266-arduino-1fc5925a";
+char topic[] = "to-esp8266-arduino-2wk5925b";
 
 WiFiClient wifiClient;
 PubSubClient client(wifiClient);
@@ -33,6 +38,7 @@ void setup() {
   // Set output mode for all GPIO pins
   pinMode(GPIO0, OUTPUT);
   pinMode(GPIO2, OUTPUT);
+  digitalWrite(GPIO0, LOW);
   
   delay(10);
   
@@ -47,56 +53,6 @@ void loop() {
   }
 
   client.loop();
-}
-
-void testJSON() {
-  // Allocate the JSON document
-  //
-  // Inside the brackets, 200 is the capacity of the memory pool in bytes.
-  // Don't forget to change this value to match your JSON document.
-  // Use arduinojson.org/v6/assistant to compute the capacity.
-  StaticJsonDocument<200> doc;
-
-  // StaticJsonDocument<N> allocates memory on the stack, it can be
-  // replaced by DynamicJsonDocument which allocates in the heap.
-  //
-  // DynamicJsonDocument doc(200);
-
-  // JSON input string.
-  //
-  // Using a char[], as shown here, enables the "zero-copy" mode. This mode uses
-  // the minimal amount of memory because the JsonDocument stores pointers to
-  // the input buffer.
-  // If you use another type of input, ArduinoJson must copy the strings from
-  // the input to the JsonDocument, so you need to increase the capacity of the
-  // JsonDocument.
-  char json[] =
-      "{\"sensor\":\"gps\",\"time\":1351824120,\"data\":[48.756080,2.302038]}";
-
-  // Deserialize the JSON document
-  DeserializationError error = deserializeJson(doc, json);
-
-  // Test if parsing succeeds.
-  if (error) {
-    Serial.print(F("deserializeJson() failed: "));
-    Serial.println(error.f_str());
-    return;
-  }
-
-  // Fetch values.
-  //
-  // Most of the time, you can rely on the implicit casts.
-  // In other case, you can do doc["time"].as<long>();
-  const char* sensor = doc["sensor"];
-  long time = doc["time"];
-  double latitude = doc["data"][0];
-  double longitude = doc["data"][1];
-
-  // Print values.
-  Serial.println(sensor);
-  Serial.println(time);
-  Serial.println(latitude, 6);
-  Serial.println(longitude, 6);
 }
 
 void parseJSON(const char* json) {
@@ -130,7 +86,7 @@ void parseJSON(const char* json) {
     
     StaticJsonDocument<200> doc;
 
-    doc["gpio"] = 2;
+    doc["gpio"] = 0;
     doc["status"] = gpioState;
   
     // Generate the minified JSON.
@@ -149,7 +105,10 @@ void parseJSON(const char* json) {
     Serial.print("status: ");
     Serial.println(status);
 
-    gpioState = status;
+    // if (gpioState != status) {
+      gpioState = status;
+      digitalWrite(GPIO0, status ? HIGH : LOW);
+    // }
   }
 }
 
@@ -161,36 +120,6 @@ void on_message(const char* topic, byte* payload, unsigned int length) {
   
   parseJSON(json);
 }
-
-//String get_gpio_status() {
-//  // Prepare gpios JSON payload string
-//  StaticJsonBuffer<200> jsonBuffer;
-//  JsonObject& data = jsonBuffer.createObject();
-//  data[String(GPIO0_PIN)] = gpioState[0] ? true : false;
-//  data[String(GPIO2_PIN)] = gpioState[1] ? true : false;
-//  char payload[256];
-//  data.printTo(payload, sizeof(payload));
-//  String strPayload = String(payload);
-//  Serial.print("Get gpio status: ");
-//  Serial.println(strPayload);
-//
-//  
-//  client.publish(topic);
-//}
-
-//void set_gpio_status(int pin, boolean enabled) {
-//  if (pin == GPIO0_PIN) {
-//    // Output GPIOs state
-//    digitalWrite(GPIO0, enabled ? HIGH : LOW);
-//    // Update GPIOs state
-//    gpioState[0] = enabled;
-//  } else if (pin == GPIO2_PIN) {
-//    // Output GPIOs state
-//    digitalWrite(GPIO2, enabled ? HIGH : LOW);
-//    // Update GPIOs state
-//    gpioState[1] = enabled;
-//  }
-//}
 
 void InitWiFi() {
   Serial.println(F("Connecting to AP ..."));
